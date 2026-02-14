@@ -1,11 +1,44 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
+import { toPng } from "html-to-image";
 import { getResult } from "@/lib/scoring";
 import type { TestResult } from "@/lib/scoring";
 import { resultTypes } from "@/data/results";
 import type { Gender, Intensity } from "@/data/results";
+
+// Kakao SDK 타입 선언
+declare global {
+  interface Window {
+    Kakao?: {
+      init: (key: string) => void;
+      isInitialized: () => boolean;
+      Share: {
+        sendDefault: (options: {
+          objectType: string;
+          content: {
+            title: string;
+            description: string;
+            imageUrl: string;
+            link: {
+              mobileWebUrl: string;
+              webUrl: string;
+            };
+          };
+          buttons: Array<{
+            title: string;
+            link: {
+              mobileWebUrl: string;
+              webUrl: string;
+            };
+          }>;
+        }) => void;
+      };
+    };
+  }
+}
 
 type ResultTypeKey =
   | "crazySurvival"
@@ -47,10 +80,12 @@ const compatibilityData: Record<
 export default function ResultPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
+  const [analyzingStep, setAnalyzingStep] = useState(0);
   const [result, setResult] = useState<TestResult | null>(null);
   const [gender, setGender] = useState<Gender | null>(null);
   const [showGenderModal, setShowGenderModal] = useState(false);
   const [copied, setCopied] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const stored = sessionStorage.getItem("instinct-test-answers");
@@ -63,11 +98,25 @@ export default function ResultPage() {
       const answers = JSON.parse(stored);
       const testResult = getResult(answers);
       setResult(testResult);
-      setShowGenderModal(true);
+
+      // 3단계 분석 연출 (각 1초)
+      const steps = [
+        { step: 0, delay: 0 },
+        { step: 1, delay: 1000 },
+        { step: 2, delay: 2000 },
+      ];
+
+      steps.forEach(({ step, delay }) => {
+        setTimeout(() => setAnalyzingStep(step), delay);
+      });
+
+      // 3초 후 성별 선택 모달 표시
+      setTimeout(() => {
+        setLoading(false);
+        setShowGenderModal(true);
+      }, 3000);
     } catch {
       router.push("/");
-    } finally {
-      setLoading(false);
     }
   }, [router]);
 
@@ -93,12 +142,120 @@ export default function ResultPage() {
     });
   };
 
+  const handleDownloadImage = async () => {
+    if (!cardRef.current) return;
+
+    try {
+      const dataUrl = await toPng(cardRef.current, {
+        cacheBust: true,
+        pixelRatio: 2,
+      });
+
+      const link = document.createElement("a");
+      link.download = "instinct-test-result.png";
+      link.href = dataUrl;
+      link.click();
+    } catch (error) {
+      console.error("이미지 생성 실패:", error);
+    }
+  };
+
+  const handleKakaoShare = () => {
+    if (!result || !gender) return;
+
+    const resultTypeKey = getResultTypeKey(
+      result.intensity,
+      result.dominantAxis
+    );
+    const resultType = resultTypes[resultTypeKey];
+    const typeName = resultType.label(gender);
+
+    if (typeof window !== "undefined" && window.Kakao) {
+      if (!window.Kakao.isInitialized()) {
+        const kakaoKey = process.env.NEXT_PUBLIC_KAKAO_KEY;
+        if (kakaoKey) {
+          window.Kakao.init(kakaoKey);
+        }
+      }
+
+      if (window.Kakao.isInitialized()) {
+        window.Kakao.Share.sendDefault({
+          objectType: "feed",
+          content: {
+            title: `나의 본능 유형: ${typeName}`,
+            description: `생존 ${result.scores.survival}점 / 번식 ${result.scores.reproduction}점`,
+            imageUrl: `${window.location.origin}/og-image.png`,
+            link: {
+              mobileWebUrl: window.location.origin,
+              webUrl: window.location.origin,
+            },
+          },
+          buttons: [
+            {
+              title: "나도 테스트하기",
+              link: {
+                mobileWebUrl: window.location.origin,
+                webUrl: window.location.origin,
+              },
+            },
+          ],
+        });
+      }
+    }
+  };
+
   if (loading) {
+    const steps = [
+      {
+        text: "생존 본능을 분석하고 있어요...",
+        color: "bg-[#2D6A4F]",
+        emoji: "🛡️",
+      },
+      {
+        text: "번식 본능을 분석하고 있어요...",
+        color: "bg-[#E63946]",
+        emoji: "💘",
+      },
+      {
+        text: "결과를 생성하고 있어요...",
+        color: "bg-[#FFB703]",
+        emoji: "✨",
+      },
+    ];
+
+    const currentStep = steps[analyzingStep];
+
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-5xl mb-4 animate-pulse">🧬</div>
-          <p className="text-gray-600">결과를 분석하고 있어요...</p>
+      <div className="min-h-screen flex items-center justify-center px-4">
+        <div className="max-w-md w-full">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={analyzingStep}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="text-center"
+            >
+              <motion.div
+                className="text-6xl mb-6"
+                animate={{ scale: [1, 1.2, 1] }}
+                transition={{ duration: 1, repeat: Infinity }}
+              >
+                {currentStep.emoji}
+              </motion.div>
+              <p className="text-gray-700 text-lg font-medium mb-6">
+                {currentStep.text}
+              </p>
+              <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                <motion.div
+                  className={`h-full ${currentStep.color}`}
+                  initial={{ width: "0%" }}
+                  animate={{ width: "100%" }}
+                  transition={{ duration: 1, ease: "easeInOut" }}
+                />
+              </div>
+            </motion.div>
+          </AnimatePresence>
         </div>
       </div>
     );
@@ -140,12 +297,26 @@ export default function ResultPage() {
   const typeName = resultType.label(gender!);
   const compatibility = compatibilityData[resultTypeKey];
 
-  const typeColor =
+  const typeGradient =
     result.dominantAxis === "survival"
-      ? "text-[#2D6A4F]"
+      ? "bg-gradient-to-r from-[#2D6A4F] to-[#52B788]"
       : result.dominantAxis === "reproduction"
-        ? "text-[#E63946]"
-        : "text-[#FFB703]";
+        ? "bg-gradient-to-r from-[#E63946] to-[#FF758F]"
+        : "bg-gradient-to-r from-[#FFB703] to-[#FFD60A]";
+
+  const typeBorderColor =
+    result.dominantAxis === "survival"
+      ? "border-l-[#2D6A4F]"
+      : result.dominantAxis === "reproduction"
+        ? "border-l-[#E63946]"
+        : "border-l-[#FFB703]";
+
+  const quoteBackground =
+    result.dominantAxis === "survival"
+      ? "bg-gradient-to-br from-green-50 to-emerald-100"
+      : result.dominantAxis === "reproduction"
+        ? "bg-gradient-to-br from-red-50 to-pink-100"
+        : "bg-gradient-to-br from-yellow-50 to-amber-100";
 
   const totalScore = result.scores.survival + result.scores.reproduction;
   const survivalPercent = Math.round(
@@ -156,19 +327,35 @@ export default function ResultPage() {
   return (
     <div className="min-h-screen py-8 px-4">
       <div className="max-w-lg mx-auto">
-        <div className="bg-white rounded-2xl shadow-sm p-6 mb-6">
+        {/* 결과 카드 (이미지 생성용) */}
+        <div
+          ref={cardRef}
+          className="bg-white rounded-2xl shadow-sm p-8 mb-6"
+        >
           {/* 유형 헤더 */}
-          <div className="text-center mb-8">
-            <div className="text-5xl mb-3">🧬</div>
-            <h1 className={`text-3xl font-bold mb-2 ${typeColor}`}>
+          <motion.div
+            initial={{ opacity: 0, scale: 0 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.5, type: "spring", bounce: 0.4 }}
+            className="text-center mb-8"
+          >
+            <div className="text-6xl mb-4">🧬</div>
+            <h1
+              className={`text-4xl font-bold mb-3 bg-clip-text text-transparent ${typeGradient}`}
+            >
               {typeName}
             </h1>
             <p className="text-gray-600 text-lg">{resultType.subtitle}</p>
-          </div>
+          </motion.div>
 
           {/* 점수 바 */}
-          <div className="mb-8">
-            <div className="flex items-center justify-between mb-2">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="mb-10"
+          >
+            <div className="flex items-center justify-between mb-3">
               <span className="text-sm font-semibold text-[#2D6A4F]">
                 🛡️ 생존 {result.scores.survival}점
               </span>
@@ -176,55 +363,80 @@ export default function ResultPage() {
                 💘 번식 {result.scores.reproduction}점
               </span>
             </div>
-            <div className="h-8 flex rounded-full overflow-hidden bg-gray-100">
-              <div
-                className="bg-[#2D6A4F] flex items-center justify-center text-white text-xs font-bold transition-all duration-500"
-                style={{ width: `${survivalPercent}%` }}
+            <div className="h-10 flex rounded-full overflow-hidden bg-gray-100">
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${survivalPercent}%` }}
+                transition={{ duration: 1.5, ease: "easeOut", delay: 0.5 }}
+                className="bg-[#2D6A4F] flex items-center justify-center text-white text-sm font-bold"
               >
                 {survivalPercent}%
-              </div>
-              <div
-                className="bg-[#E63946] flex items-center justify-center text-white text-xs font-bold transition-all duration-500"
-                style={{ width: `${reproductionPercent}%` }}
+              </motion.div>
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${reproductionPercent}%` }}
+                transition={{ duration: 1.5, ease: "easeOut", delay: 0.5 }}
+                className="bg-[#E63946] flex items-center justify-center text-white text-sm font-bold"
               >
                 {reproductionPercent}%
-              </div>
+              </motion.div>
             </div>
-          </div>
+          </motion.div>
 
-          <div className="border-t border-gray-100 pt-6 mb-6" />
+          <div className="border-t border-gray-100 pt-8 mb-8" />
 
           {/* 특징 */}
-          <div className="mb-8">
-            <h2 className="text-xl font-bold mb-4">이런 사람이에요</h2>
+          <div className="mb-10">
+            <h2 className="text-xl font-bold mb-5">이런 사람이에요</h2>
             <div className="space-y-3">
               {resultType.traits.map((trait, index) => (
-                <div key={index} className="bg-gray-50 rounded-xl p-4">
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.7 + index * 0.1 }}
+                  className={`bg-gray-50 rounded-xl p-4 border-l-4 ${typeBorderColor}`}
+                >
                   <p className="text-gray-700">{trait}</p>
-                </div>
+                </motion.div>
               ))}
             </div>
           </div>
 
-          <div className="border-t border-gray-100 pt-6 mb-6" />
+          <div className="border-t border-gray-100 pt-8 mb-8" />
 
           {/* 연애 스타일 */}
-          <div className="mb-8">
-            <h2 className="text-xl font-bold mb-4">연애할 때는...</h2>
-            <div className="space-y-3">
+          <div className="mb-10">
+            <h2 className="text-xl font-bold mb-5">연애할 때는...</h2>
+            <div className="space-y-4">
               {resultType.loveStyle.map((style, index) => (
-                <div key={index} className="flex items-start gap-3">
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, x: -30 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{
+                    delay: 1.0 + index * 0.15,
+                    type: "spring",
+                    stiffness: 100,
+                  }}
+                  className="flex items-start gap-3"
+                >
                   <span className="text-2xl">💕</span>
                   <p className="text-gray-700 flex-1 pt-1">{style}</p>
-                </div>
+                </motion.div>
               ))}
             </div>
           </div>
 
-          <div className="border-t border-gray-100 pt-6 mb-6" />
+          <div className="border-t border-gray-100 pt-8 mb-8" />
 
           {/* 명대사 */}
-          <div className="mb-8 bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl p-6 relative">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 1.5, duration: 0.5 }}
+            className={`mb-10 ${quoteBackground} rounded-2xl p-8 relative`}
+          >
             <div className="text-6xl text-gray-300 absolute top-2 left-4">
               &ldquo;
             </div>
@@ -234,14 +446,19 @@ export default function ResultPage() {
             <div className="text-6xl text-gray-300 absolute bottom-2 right-4">
               &rdquo;
             </div>
-          </div>
+          </motion.div>
 
-          <div className="border-t border-gray-100 pt-6 mb-6" />
+          <div className="border-t border-gray-100 pt-8 mb-8" />
 
           {/* 궁합 */}
-          <div className="mb-4">
-            <h2 className="text-xl font-bold mb-4">나와 잘 맞는 유형</h2>
-            <div className="space-y-2">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 1.8 }}
+            className="mb-6"
+          >
+            <h2 className="text-xl font-bold mb-5">나와 잘 맞는 유형</h2>
+            <div className="space-y-3">
               {compatibility.extreme && (
                 <div className="bg-red-50 border border-red-200 rounded-xl p-4">
                   <span className="font-bold text-red-600">
@@ -259,28 +476,45 @@ export default function ResultPage() {
                 </span>
               </div>
             </div>
+          </motion.div>
+
+          {/* 워터마크 (이미지 생성용) */}
+          <div className="text-center text-gray-400 text-sm mt-6">
+            본능테스트
           </div>
         </div>
 
         {/* 공유 & 다시하기 */}
         <div className="space-y-3 mb-8">
           <button
-            onClick={handleShare}
-            className="w-full bg-[#FFB703] hover:bg-[#e5a503] text-foreground font-bold py-4 px-6 rounded-full text-lg transition-all active:scale-[0.98]"
+            onClick={handleDownloadImage}
+            className="w-full bg-[#2D6A4F] hover:bg-[#1b4332] text-white font-bold py-4 px-6 rounded-full text-lg transition-all active:scale-[0.98] shadow-md"
           >
-            {copied ? "복사 완료! ✓" : "결과 공유하기 📋"}
+            이미지로 저장하기 📸
           </button>
-          <button className="w-full bg-[#FEE500] hover:bg-[#F5DC00] text-gray-900 font-bold py-4 px-6 rounded-full text-lg transition-all active:scale-[0.98]">
-            카카오톡으로 공유
+          <button
+            onClick={handleShare}
+            className="w-full bg-[#FFB703] hover:bg-[#e5a503] text-gray-900 font-bold py-4 px-6 rounded-full text-lg transition-all active:scale-[0.98] shadow-md"
+          >
+            {copied ? "복사 완료! ✓" : "텍스트 복사하기 📋"}
+          </button>
+          <button
+            onClick={handleKakaoShare}
+            disabled={!process.env.NEXT_PUBLIC_KAKAO_KEY}
+            className="w-full bg-[#FEE500] hover:bg-[#F5DC00] disabled:bg-gray-200 disabled:text-gray-400 text-gray-900 font-bold py-4 px-6 rounded-full text-lg transition-all active:scale-[0.98] shadow-md disabled:cursor-not-allowed"
+          >
+            {process.env.NEXT_PUBLIC_KAKAO_KEY
+              ? "카카오톡으로 공유 💬"
+              : "카카오톡 공유 준비중"}
           </button>
           <button
             onClick={() => {
               sessionStorage.removeItem("instinct-test-answers");
               router.push("/");
             }}
-            className="w-full bg-white hover:bg-gray-50 text-gray-700 font-medium py-4 px-6 rounded-full text-lg transition-all border border-gray-200"
+            className="w-full bg-white hover:bg-gray-50 text-gray-700 font-medium py-4 px-6 rounded-full text-lg transition-all border-2 border-gray-200 active:scale-[0.98]"
           >
-            다시 테스트하기
+            다시 테스트하기 🔄
           </button>
         </div>
       </div>
