@@ -1,7 +1,9 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { getStats } from "@/lib/api";
 
 // 애니메이션 variants
 const containerVariants = {
@@ -60,12 +62,27 @@ const buttonVariants = {
     scale: 1,
     transition: {
       duration: 0.5,
+
       ease: "easeOut" as const,
     },
   },
 };
 
+const FALLBACK_COUNT = 0;
+
 export default function Home() {
+  const [participantCount, setParticipantCount] = useState(FALLBACK_COUNT);
+
+  useEffect(() => {
+    getStats().then((stats) => {
+      if (stats && typeof stats.total === "number") {
+        setParticipantCount(stats.total);
+      }
+    });
+  }, []);
+
+  const formattedCount = participantCount.toLocaleString();
+
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-12 relative overflow-hidden">
       {/* 배경 그라데이션 */}
@@ -79,10 +96,7 @@ export default function Home() {
       >
         {/* 상단 아이콘 */}
         <div className="text-center mb-8">
-          <motion.div
-            className="text-7xl mb-4"
-            variants={emojiVariants}
-          >
+          <motion.div className="text-7xl mb-4" variants={emojiVariants}>
             🧬
           </motion.div>
           <motion.h1
@@ -108,7 +122,8 @@ export default function Home() {
           variants={itemVariants}
         >
           <p className="text-base text-foreground/70 leading-relaxed mb-4">
-            인간의 두 가지 근본 욕구 — <span className="font-semibold text-[#2D6A4F]">생존 본능</span>과{" "}
+            인간의 두 가지 근본 욕구 —{" "}
+            <span className="font-semibold text-[#2D6A4F]">생존 본능</span>과{" "}
             <span className="font-semibold text-[#E63946]">번식 본능</span>.
             20개 질문으로 당신의 본능 유형을 알아보세요.
           </p>
@@ -135,8 +150,12 @@ export default function Home() {
             whileHover={{ scale: 1.05 }}
           >
             <div className="text-3xl mb-2">🛡️</div>
-            <div className="font-semibold text-[#2D6A4F] text-sm">생존 본능</div>
-            <div className="text-xs text-[#2D6A4F]/70 mt-1">안정 · 자원 · 방어</div>
+            <div className="font-semibold text-[#2D6A4F] text-sm">
+              생존 본능
+            </div>
+            <div className="text-xs text-[#2D6A4F]/70 mt-1">
+              안정 · 자원 · 방어
+            </div>
           </motion.div>
           <motion.div
             className="bg-[#E63946]/10 border-2 border-[#E63946]/30 rounded-xl p-4 text-center hover:-rotate-1 transition-transform duration-300 cursor-default"
@@ -145,8 +164,12 @@ export default function Home() {
             whileHover={{ scale: 1.05 }}
           >
             <div className="text-3xl mb-2">💘</div>
-            <div className="font-semibold text-[#E63946] text-sm">번식 본능</div>
-            <div className="text-xs text-[#E63946]/70 mt-1">매력 · 관계 · 확장</div>
+            <div className="font-semibold text-[#E63946] text-sm">
+              번식 본능
+            </div>
+            <div className="text-xs text-[#E63946]/70 mt-1">
+              매력 · 관계 · 확장
+            </div>
           </motion.div>
         </div>
 
@@ -165,7 +188,9 @@ export default function Home() {
           className="text-center text-sm text-foreground/60 mt-4 font-medium"
           variants={itemVariants}
         >
-          🔥 지금까지 <span className="text-[#FFB703] font-bold">12,847명</span>이 참여했어요
+          🔥 지금까지{" "}
+          <span className="text-[#FFB703] font-bold">{formattedCount}명</span>이
+          참여했어요
         </motion.p>
 
         {/* 결과 유형 미리보기 */}
@@ -183,7 +208,7 @@ export default function Home() {
               "생존주의자",
               "사랑꾼",
               "균형잡힌놈",
-              "헷갈리는녀석"
+              "헷갈리는녀석",
             ].map((type, index) => (
               <motion.span
                 key={type}

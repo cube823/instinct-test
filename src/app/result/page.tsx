@@ -1,13 +1,17 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState, useRef, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { toPng } from "html-to-image";
 import { getResult } from "@/lib/scoring";
 import type { TestResult } from "@/lib/scoring";
 import { resultTypes } from "@/data/results";
 import type { Gender, Intensity } from "@/data/results";
+import {
+  saveResult as apiSaveResult,
+  getResult as apiGetResult,
+} from "@/lib/api";
 
 // Kakao SDK 타입 선언
 declare global {
@@ -77,17 +81,48 @@ const compatibilityData: Record<
   balanced: { good: ["균형형", "모든 유형"] },
 };
 
-export default function ResultPage() {
+function ResultContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [analyzingStep, setAnalyzingStep] = useState(0);
   const [result, setResult] = useState<TestResult | null>(null);
   const [gender, setGender] = useState<Gender | null>(null);
   const [showGenderModal, setShowGenderModal] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [resultId, setResultId] = useState<string | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    const sharedId = searchParams.get("id");
+
+    if (sharedId) {
+      // 공유 링크로 접속한 경우 → API에서 결과 조회
+      apiGetResult(sharedId).then((saved) => {
+        if (saved) {
+          setResult({
+            scores: {
+              survival: saved.survival_score,
+              reproduction: saved.reproduction_score,
+            },
+            intensity: saved.intensity as Intensity,
+            dominantAxis: saved.dominant_axis as
+              | "survival"
+              | "reproduction"
+              | "balanced",
+          });
+          setGender(saved.gender as Gender);
+          setResultId(saved.id);
+          setLoading(false);
+        } else {
+          // API 실패 → 홈으로
+          router.push("/");
+        }
+      });
+      return;
+    }
+
+    // 직접 테스트 완료 → sessionStorage에서 결과 계산
     const stored = sessionStorage.getItem("instinct-test-answers");
     if (!stored) {
       router.push("/");
@@ -118,11 +153,49 @@ export default function ResultPage() {
     } catch {
       router.push("/");
     }
-  }, [router]);
+  }, [router, searchParams]);
 
-  const handleGenderSelect = (selectedGender: Gender) => {
+  const handleGenderSelect = async (selectedGender: Gender) => {
     setGender(selectedGender);
     setShowGenderModal(false);
+
+    // API에 결과 저장 (비동기, 실패해도 결과 표시에 영향 없음)
+    if (result) {
+      const resultTypeKey = getResultTypeKey(
+        result.intensity,
+        result.dominantAxis
+      );
+
+      let answers: Record<string, number> | undefined;
+      try {
+        const stored = sessionStorage.getItem("instinct-test-answers");
+        if (stored) answers = JSON.parse(stored);
+      } catch {
+        // answers 없이도 저장 가능
+      }
+
+      const saved = await apiSaveResult({
+        survival_score: result.scores.survival,
+        reproduction_score: result.scores.reproduction,
+        intensity: result.intensity,
+        dominant_axis: result.dominantAxis,
+        result_type: resultTypeKey,
+        gender: selectedGender,
+        answers,
+      });
+
+      if (saved) {
+        setResultId(saved.id);
+        window.history.replaceState(null, "", `/result?id=${saved.id}`);
+      }
+    }
+  };
+
+  const getShareUrl = () => {
+    if (resultId) {
+      return `${window.location.origin}/result?id=${resultId}`;
+    }
+    return window.location.origin;
   };
 
   const handleShare = () => {
@@ -134,7 +207,8 @@ export default function ResultPage() {
     );
     const resultType = resultTypes[resultTypeKey];
     const typeName = resultType.label(gender);
-    const shareText = `나의 본능 유형은 ${typeName}! 🧬\n생존 ${result.scores.survival}점 / 번식 ${result.scores.reproduction}점\n${window.location.origin}`;
+    const shareUrl = getShareUrl();
+    const shareText = `나의 본능 유형은 ${typeName}! 🧬\n생존 ${result.scores.survival}점 / 번식 ${result.scores.reproduction}점\n${shareUrl}`;
 
     navigator.clipboard.writeText(shareText).then(() => {
       setCopied(true);
@@ -169,6 +243,7 @@ export default function ResultPage() {
     );
     const resultType = resultTypes[resultTypeKey];
     const typeName = resultType.label(gender);
+    const shareUrl = getShareUrl();
 
     if (typeof window !== "undefined" && window.Kakao) {
       if (!window.Kakao.isInitialized()) {
@@ -186,8 +261,8 @@ export default function ResultPage() {
             description: `생존 ${result.scores.survival}점 / 번식 ${result.scores.reproduction}점`,
             imageUrl: `${window.location.origin}/og-image.png`,
             link: {
-              mobileWebUrl: window.location.origin,
-              webUrl: window.location.origin,
+              mobileWebUrl: shareUrl,
+              webUrl: shareUrl,
             },
           },
           buttons: [
@@ -519,5 +594,22 @@ export default function ResultPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ResultPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <div className="text-6xl mb-4 animate-pulse">🧬</div>
+            <p className="text-gray-500">로딩 중...</p>
+          </div>
+        </div>
+      }
+    >
+      <ResultContent />
+    </Suspense>
   );
 }

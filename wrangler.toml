@@ -1,0 +1,7 @@
+name = "instinct-test"
+compatibility_date = "2024-12-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "instinct-test-db"
+database_id = "placeholder-replace-after-d1-create"

@@ -3,10 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "npx wrangler pages dev --port 3000 -- npx next dev --port 3001",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "preview": "npm run build && npx wrangler pages dev out --port 3000",
+    "d1:migrate:local": "npx wrangler d1 migrations apply instinct-test-db --local",
+    "d1:migrate:prod": "npx wrangler d1 migrations apply instinct-test-db --remote"
   },
   "dependencies": {
     "framer-motion": "^12.34.0",
@@ -23,6 +26,8 @@
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "@cloudflare/workers-types": "^4",
+    "wrangler": "^4"
   }
 }

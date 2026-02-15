@@ -79,7 +79,7 @@ export default function TestPage() {
     : "border-l-[#E63946]";
 
   return (
-    <div className="min-h-screen bg-background py-8 px-4">
+    <div className="min-h-screen bg-background py-8 px-4 overflow-hidden">
       <div className="max-w-lg mx-auto">
         {/* 격려 메시지 */}
         <AnimatePresence>
