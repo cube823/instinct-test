@@ -16,21 +16,21 @@ export default function TestPage() {
   const currentQuestion = questions[currentIndex];
   const progress = ((currentIndex + 1) / questions.length) * 100;
 
-  // 프로그레스 바 그라데이션 색상 계산 (녹색 → 빨강)
+  // 프로그레스 바 그라데이션 색상 계산 (Symbiosis 파랑 → Renegade 빨강)
   const getProgressColor = () => {
     const ratio = progress / 100;
-    const red = Math.round(46 + (230 - 46) * ratio);
-    const green = Math.round(106 + (99 - 106) * ratio);
-    const blue = Math.round(79 + (70 - 79) * ratio);
+    const red = Math.round(61 + (255 - 61) * ratio);
+    const green = Math.round(77 + (42 - 77) * ratio);
+    const blue = Math.round(122 + (27 - 122) * ratio);
     return `rgb(${red}, ${green}, ${blue})`;
   };
 
   // 격려 메시지 표시
   useEffect(() => {
     const milestones = [
-      { index: 4, text: "좋아요! 벌써 25% 완료 💪" },
-      { index: 9, text: "절반 왔어요! 🔥" },
-      { index: 14, text: "거의 다 왔어요! 조금만 더 💫" },
+      { index: 4, text: "좋아요! 벌써 25% 완료" },
+      { index: 9, text: "절반 왔어요!" },
+      { index: 14, text: "거의 다 왔어요! 조금만 더" },
     ];
 
     const milestone = milestones.find(m => m.index === currentIndex);
@@ -72,11 +72,10 @@ export default function TestPage() {
     }
   };
 
-  // 축 이모지
-  const axisEmoji = currentQuestion.axis === "survival" ? "🛡️" : "💘";
-  const axisBorderColor = currentQuestion.axis === "survival"
-    ? "border-l-[#2D6A4F]"
-    : "border-l-[#E63946]";
+  // 축 상단 테두리 색상
+  const axisTopColor = currentQuestion.axis === "survival"
+    ? "border-t-[#3D4D7A]"
+    : "border-t-[#FF2A1B]";
 
   return (
     <div className="min-h-screen bg-background py-8 px-4 overflow-hidden">
@@ -89,7 +88,7 @@ export default function TestPage() {
               animate={{ y: 0, opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.3 }}
-              className="fixed top-8 left-1/2 -translate-x-1/2 z-50 bg-[#FFB703] text-white px-6 py-3 rounded-full shadow-lg font-semibold"
+              className="fixed top-8 left-1/2 -translate-x-1/2 z-50 bg-[#2C2C35] text-white px-6 py-3 rounded-full shadow-lg font-semibold"
             >
               {encouragementText}
             </motion.div>
@@ -100,7 +99,7 @@ export default function TestPage() {
         {currentIndex > 0 && (
           <button
             onClick={handlePrevious}
-            className="mb-4 flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+            className="mb-4 flex items-center gap-2 text-[#8A8690] hover:text-[#2C2C35] transition-colors"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -111,7 +110,7 @@ export default function TestPage() {
 
         {/* 프로그레스 바 */}
         <div className="mb-8">
-          <div className="h-3 bg-gray-200 rounded-full overflow-hidden relative">
+          <div className="h-2 bg-[#E8E4DC] rounded-full overflow-hidden relative">
             <motion.div
               className="h-full transition-all duration-300 ease-out"
               style={{
@@ -120,16 +119,9 @@ export default function TestPage() {
               }}
               layout
             />
-            {/* 현재 축 표시 */}
-            <div
-              className="absolute top-0 h-full flex items-center text-lg transition-all duration-300"
-              style={{ left: `${Math.max(progress - 5, 2)}%` }}
-            >
-              {axisEmoji}
-            </div>
           </div>
-          <p className="text-sm text-gray-500 mt-2 text-center">
-            {axisEmoji} Q.{currentIndex + 1} / {questions.length}
+          <p className="text-sm text-[#8A8690] mt-2 text-center">
+            {currentIndex + 1} / {questions.length}
           </p>
         </div>
 
@@ -139,7 +131,7 @@ export default function TestPage() {
             <motion.div
               key={currentIndex}
               initial={{
-                x: direction > 0 ? 300 : -300,
+                x: direction > 0 ? 80 : -80,
                 opacity: 0
               }}
               animate={{
@@ -147,7 +139,7 @@ export default function TestPage() {
                 opacity: 1
               }}
               exit={{
-                x: direction > 0 ? -300 : 300,
+                x: direction > 0 ? -80 : 80,
                 opacity: 0
               }}
               transition={{
@@ -155,7 +147,7 @@ export default function TestPage() {
                 stiffness: 300,
                 damping: 30
               }}
-              className={`bg-white rounded-2xl shadow-sm p-8 border-l-4 ${axisBorderColor} absolute w-full`}
+              className={`bg-white rounded-2xl p-8 border-t-[3px] ${axisTopColor} border border-[#E8E4DC] absolute w-full`}
             >
               <h2 className="text-2xl font-bold text-center leading-relaxed">
                 {currentQuestion.text}
@@ -176,15 +168,15 @@ export default function TestPage() {
                   whileTap={{ scale: 0.95 }}
                   className={`flex-1 h-16 rounded-xl font-semibold text-lg transition-all duration-200 active:scale-95 ${
                     answers[currentQuestion.id] === value
-                      ? "bg-[#FFB703] text-white shadow-xl"
-                      : "bg-white hover:bg-gray-50 text-gray-700 border-2 border-gray-200 hover:border-[#FFB703] hover:shadow-lg"
+                      ? "bg-[#B87830] text-white shadow-xl"
+                      : "bg-white hover:bg-gray-50 text-[#2C2C35] border-2 border-[#E8E4DC] hover:border-[#B87830] hover:shadow-lg"
                   }`}
                 >
                   {value}
                 </motion.button>
               ))}
             </div>
-            <div className="flex justify-between text-xs text-gray-500 px-1">
+            <div className="flex justify-between text-xs text-[#8A8690] px-1">
               <span>전혀 아니다</span>
               <span>매우 그렇다</span>
             </div>
@@ -197,8 +189,8 @@ export default function TestPage() {
               whileTap={{ scale: 0.98 }}
               className={`flex-1 h-24 rounded-xl font-bold text-xl transition-all duration-300 active:scale-95 ${
                 answers[currentQuestion.id] === 5
-                  ? "bg-[#2D6A4F] text-white shadow-xl"
-                  : "bg-white hover:bg-[#2D6A4F] hover:text-white text-gray-700 border-2 border-gray-200 hover:border-[#2D6A4F] hover:shadow-lg"
+                  ? "bg-[#3D4D7A] text-white shadow-xl"
+                  : "bg-white hover:bg-[#3D4D7A] hover:text-white text-[#2C2C35] border-2 border-[#E8E4DC] hover:border-[#3D4D7A] hover:shadow-lg"
               }`}
             >
               YES
@@ -209,8 +201,8 @@ export default function TestPage() {
               whileTap={{ scale: 0.98 }}
               className={`flex-1 h-24 rounded-xl font-bold text-xl transition-all duration-300 active:scale-95 ${
                 answers[currentQuestion.id] === 1
-                  ? "bg-[#E63946] text-white shadow-xl"
-                  : "bg-white hover:bg-[#E63946] hover:text-white text-gray-700 border-2 border-gray-200 hover:border-[#E63946] hover:shadow-lg"
+                  ? "bg-[#FF2A1B] text-white shadow-xl"
+                  : "bg-white hover:bg-[#FF2A1B] hover:text-white text-[#2C2C35] border-2 border-[#E8E4DC] hover:border-[#FF2A1B] hover:shadow-lg"
               }`}
             >
               NO

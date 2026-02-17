@@ -1,18 +1,65 @@
 @import "tailwindcss";
 
 :root {
-  --background: #FAFAFA;
-  --foreground: #1A1A2E;
-  --survival-color: #2D6A4F;
-  --reproduction-color: #E63946;
-  --accent-color: #FFB703;
+  /* Quietude - 베이스 */
+  --q-chalk: #E3DCBB;
+  --q-rosy: #F2EADF;
+  --q-beige: #F5EFE0;
+  --q-earth: #B5A48A;
+  --q-blue-white: #EEF1F3;
+
+  /* Homecoming - 따뜻한 포인트 */
+  --h-leather: #B87830;
+  --h-terracotta: #C25A28;
+  --h-moss: #6B8C3C;
+
+  /* Symbiosis - 생존축 */
+  --s-deep-blue: #3D4D7A;
+  --s-golden: #C8A060;
+  --s-violet: #7B6BAE;
+  --s-pale-blue: #C8D0E8;
+
+  /* Renegade - 번식축 */
+  --r-red: #FF2A1B;
+  --r-bordeaux: #7A3050;
+  --r-orange: #F0882A;
+  --r-yellow-green: #B8D828;
+
+  /* 시맨틱 토큰 */
+  --background: #FAFAF7;
+  --surface: #FFFFFF;
+  --surface-muted: #F5F0E8;
+  --foreground: #2C2C35;
+  --foreground-muted: #8A8690;
+  --border: #E8E4DC;
+
+  --survival-color: #3D4D7A;
+  --survival-light: #C8D0E8;
+  --survival-accent: #7B6BAE;
+
+  --reproduction-color: #FF2A1B;
+  --reproduction-light: #FFE0DD;
+  --reproduction-accent: #F0882A;
+
+  --cta: #B87830;
+  --cta-hover: #C25A28;
+
+  --accent-color: #B87830;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-foreground-muted: var(--foreground-muted);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-border: var(--border);
   --color-survival: var(--survival-color);
+  --color-survival-light: var(--survival-light);
   --color-reproduction: var(--reproduction-color);
+  --color-reproduction-light: var(--reproduction-light);
+  --color-cta: var(--cta);
+  --color-cta-hover: var(--cta-hover);
   --color-accent: var(--accent-color);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);

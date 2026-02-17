@@ -283,18 +283,15 @@ function ResultContent() {
     const steps = [
       {
         text: "생존 본능을 분석하고 있어요...",
-        color: "bg-[#2D6A4F]",
-        emoji: "🛡️",
+        color: "bg-[#3D4D7A]",
       },
       {
         text: "번식 본능을 분석하고 있어요...",
-        color: "bg-[#E63946]",
-        emoji: "💘",
+        color: "bg-[#FF2A1B]",
       },
       {
         text: "결과를 생성하고 있어요...",
-        color: "bg-[#FFB703]",
-        emoji: "✨",
+        color: "bg-[#B87830]",
       },
     ];
 
@@ -311,17 +308,10 @@ function ResultContent() {
               exit={{ opacity: 0, y: -20 }}
               className="text-center"
             >
-              <motion.div
-                className="text-6xl mb-6"
-                animate={{ scale: [1, 1.2, 1] }}
-                transition={{ duration: 1, repeat: Infinity }}
-              >
-                {currentStep.emoji}
-              </motion.div>
-              <p className="text-gray-700 text-lg font-medium mb-6">
+              <p className="text-[#2C2C35] text-lg font-medium mb-6">
                 {currentStep.text}
               </p>
-              <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+              <div className="w-full bg-[#E8E4DC] rounded-full h-3 overflow-hidden">
                 <motion.div
                   className={`h-full ${currentStep.color}`}
                   initial={{ width: "0%" }}
@@ -341,20 +331,19 @@ function ResultContent() {
   if (showGenderModal) {
     return (
       <div className="min-h-screen flex items-center justify-center px-4">
-        <div className="max-w-md w-full bg-white rounded-2xl shadow-sm p-8 text-center">
-          <div className="text-5xl mb-4">🧬</div>
+        <div className="max-w-md w-full bg-white rounded-2xl shadow-sm border border-[#E8E4DC] p-8 text-center">
           <h2 className="text-2xl font-bold mb-2">결과를 확인하기 전에!</h2>
-          <p className="text-gray-600 mb-8">당신의 성별은?</p>
+          <p className="text-[#8A8690] mb-8">당신의 성별은?</p>
           <div className="flex gap-4">
             <button
               onClick={() => handleGenderSelect("male")}
-              className="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-bold py-4 px-6 rounded-xl text-lg transition-all hover:scale-105"
+              className="flex-1 bg-[#3D4D7A] hover:bg-[#3D4D7A]/90 text-white font-bold py-4 px-6 rounded-xl text-lg transition-all hover:scale-105"
             >
               남자
             </button>
             <button
               onClick={() => handleGenderSelect("female")}
-              className="flex-1 bg-pink-500 hover:bg-pink-600 text-white font-bold py-4 px-6 rounded-xl text-lg transition-all hover:scale-105"
+              className="flex-1 bg-[#FF2A1B] hover:bg-[#FF2A1B]/90 text-white font-bold py-4 px-6 rounded-xl text-lg transition-all hover:scale-105"
             >
               여자
             </button>
@@ -374,24 +363,24 @@ function ResultContent() {
 
   const typeGradient =
     result.dominantAxis === "survival"
-      ? "bg-gradient-to-r from-[#2D6A4F] to-[#52B788]"
+      ? "bg-gradient-to-r from-[#3D4D7A] to-[#7B6BAE]"
       : result.dominantAxis === "reproduction"
-        ? "bg-gradient-to-r from-[#E63946] to-[#FF758F]"
-        : "bg-gradient-to-r from-[#FFB703] to-[#FFD60A]";
+        ? "bg-gradient-to-r from-[#FF2A1B] to-[#F0882A]"
+        : "bg-gradient-to-r from-[#B87830] to-[#C8A060]";
 
   const typeBorderColor =
     result.dominantAxis === "survival"
-      ? "border-l-[#2D6A4F]"
+      ? "border-l-[#3D4D7A]"
       : result.dominantAxis === "reproduction"
-        ? "border-l-[#E63946]"
-        : "border-l-[#FFB703]";
+        ? "border-l-[#FF2A1B]"
+        : "border-l-[#B87830]";
 
   const quoteBackground =
     result.dominantAxis === "survival"
-      ? "bg-gradient-to-br from-green-50 to-emerald-100"
+      ? "bg-[#C8D0E8]/30"
       : result.dominantAxis === "reproduction"
-        ? "bg-gradient-to-br from-red-50 to-pink-100"
-        : "bg-gradient-to-br from-yellow-50 to-amber-100";
+        ? "bg-[#FFE0DD]/50"
+        : "bg-[#F5F0E8]";
 
   const totalScore = result.scores.survival + result.scores.reproduction;
   const survivalPercent = Math.round(
@@ -414,13 +403,12 @@ function ResultContent() {
             transition={{ duration: 0.5, type: "spring", bounce: 0.4 }}
             className="text-center mb-8"
           >
-            <div className="text-6xl mb-4">🧬</div>
             <h1
-              className={`text-4xl font-bold mb-3 bg-clip-text text-transparent ${typeGradient}`}
+              className={`text-4xl font-bold mb-3 bg-clip-text text-transparent ${typeGradient} tracking-tight`}
             >
               {typeName}
             </h1>
-            <p className="text-gray-600 text-lg">{resultType.subtitle}</p>
+            <p className="text-[#8A8690] text-lg">{resultType.subtitle}</p>
           </motion.div>
 
           {/* 점수 바 */}
@@ -431,19 +419,19 @@ function ResultContent() {
             className="mb-10"
           >
             <div className="flex items-center justify-between mb-3">
-              <span className="text-sm font-semibold text-[#2D6A4F]">
-                🛡️ 생존 {result.scores.survival}점
+              <span className="text-sm font-semibold text-[#3D4D7A]">
+                생존 {result.scores.survival}점
               </span>
-              <span className="text-sm font-semibold text-[#E63946]">
-                💘 번식 {result.scores.reproduction}점
+              <span className="text-sm font-semibold text-[#FF2A1B]">
+                번식 {result.scores.reproduction}점
               </span>
             </div>
-            <div className="h-10 flex rounded-full overflow-hidden bg-gray-100">
+            <div className="h-8 flex rounded-full overflow-hidden bg-[#E8E4DC]">
               <motion.div
                 initial={{ width: 0 }}
                 animate={{ width: `${survivalPercent}%` }}
                 transition={{ duration: 1.5, ease: "easeOut", delay: 0.5 }}
-                className="bg-[#2D6A4F] flex items-center justify-center text-white text-sm font-bold"
+                className="bg-[#3D4D7A] flex items-center justify-center text-white text-sm font-bold"
               >
                 {survivalPercent}%
               </motion.div>
@@ -451,14 +439,14 @@ function ResultContent() {
                 initial={{ width: 0 }}
                 animate={{ width: `${reproductionPercent}%` }}
                 transition={{ duration: 1.5, ease: "easeOut", delay: 0.5 }}
-                className="bg-[#E63946] flex items-center justify-center text-white text-sm font-bold"
+                className="bg-[#FF2A1B] flex items-center justify-center text-white text-sm font-bold"
               >
                 {reproductionPercent}%
               </motion.div>
             </div>
           </motion.div>
 
-          <div className="border-t border-gray-100 pt-8 mb-8" />
+          <div className="border-t border-[#E8E4DC] pt-8 mb-8" />
 
           {/* 특징 */}
           <div className="mb-10">
@@ -470,15 +458,15 @@ function ResultContent() {
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.7 + index * 0.1 }}
-                  className={`bg-gray-50 rounded-xl p-4 border-l-4 ${typeBorderColor}`}
+                  className={`bg-[#F5F0E8] rounded-xl p-4 border-l-4 ${typeBorderColor}`}
                 >
-                  <p className="text-gray-700">{trait}</p>
+                  <p className="text-[#2C2C35]/80">{trait}</p>
                 </motion.div>
               ))}
             </div>
           </div>
 
-          <div className="border-t border-gray-100 pt-8 mb-8" />
+          <div className="border-t border-[#E8E4DC] pt-8 mb-8" />
 
           {/* 연애 스타일 */}
           <div className="mb-10">
@@ -496,14 +484,14 @@ function ResultContent() {
                   }}
                   className="flex items-start gap-3"
                 >
-                  <span className="text-2xl">💕</span>
-                  <p className="text-gray-700 flex-1 pt-1">{style}</p>
+                  <span className="w-2 h-2 rounded-full bg-[#FF2A1B]/60 mt-2 shrink-0"></span>
+                  <p className="text-[#2C2C35]/80 flex-1 pt-1">{style}</p>
                 </motion.div>
               ))}
             </div>
           </div>
 
-          <div className="border-t border-gray-100 pt-8 mb-8" />
+          <div className="border-t border-[#E8E4DC] pt-8 mb-8" />
 
           {/* 명대사 */}
           <motion.div
@@ -512,18 +500,18 @@ function ResultContent() {
             transition={{ delay: 1.5, duration: 0.5 }}
             className={`mb-10 ${quoteBackground} rounded-2xl p-8 relative`}
           >
-            <div className="text-6xl text-gray-300 absolute top-2 left-4">
+            <div className="text-6xl text-[#B5A48A]/40 absolute top-2 left-4">
               &ldquo;
             </div>
-            <p className="text-lg italic text-gray-800 text-center pt-8 pb-4 px-4">
+            <p className="text-lg italic text-[#2C2C35] text-center pt-8 pb-4 px-4">
               {resultType.quote}
             </p>
-            <div className="text-6xl text-gray-300 absolute bottom-2 right-4">
+            <div className="text-6xl text-[#B5A48A]/40 absolute bottom-2 right-4">
               &rdquo;
             </div>
           </motion.div>
 
-          <div className="border-t border-gray-100 pt-8 mb-8" />
+          <div className="border-t border-[#E8E4DC] pt-8 mb-8" />
 
           {/* 궁합 */}
           <motion.div
@@ -535,18 +523,18 @@ function ResultContent() {
             <h2 className="text-xl font-bold mb-5">나와 잘 맞는 유형</h2>
             <div className="space-y-3">
               {compatibility.extreme && (
-                <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-                  <span className="font-bold text-red-600">
-                    🔥 극과극 케미
+                <div className="bg-[#FFE0DD]/50 border border-[#FF2A1B]/20 rounded-xl p-4">
+                  <span className="font-bold text-[#FF2A1B]">
+                    극과극 케미
                   </span>
-                  <span className="text-gray-700 ml-2">
+                  <span className="text-[#2C2C35]/80 ml-2">
                     {compatibility.extreme}
                   </span>
                 </div>
               )}
-              <div className="bg-green-50 border border-green-200 rounded-xl p-4">
-                <span className="font-bold text-green-600">✅ 좋은 궁합</span>
-                <span className="text-gray-700 ml-2">
+              <div className="bg-[#C8D0E8]/30 border border-[#3D4D7A]/20 rounded-xl p-4">
+                <span className="font-bold text-[#3D4D7A]">좋은 궁합</span>
+                <span className="text-[#2C2C35]/80 ml-2">
                   {compatibility.good.join(", ")}
                 </span>
               </div>
@@ -554,7 +542,7 @@ function ResultContent() {
           </motion.div>
 
           {/* 워터마크 (이미지 생성용) */}
-          <div className="text-center text-gray-400 text-sm mt-6">
+          <div className="text-center text-[#B5A48A] text-sm mt-6">
             본능테스트
           </div>
         </div>
@@ -563,15 +551,15 @@ function ResultContent() {
         <div className="space-y-3 mb-8">
           <button
             onClick={handleDownloadImage}
-            className="w-full bg-[#2D6A4F] hover:bg-[#1b4332] text-white font-bold py-4 px-6 rounded-full text-lg transition-all active:scale-[0.98] shadow-md"
+            className="w-full bg-[#3D4D7A] hover:bg-[#3D4D7A]/90 text-white font-bold py-4 px-6 rounded-full text-lg transition-all active:scale-[0.98] shadow-md"
           >
-            이미지로 저장하기 📸
+            이미지로 저장하기
           </button>
           <button
             onClick={handleShare}
-            className="w-full bg-[#FFB703] hover:bg-[#e5a503] text-gray-900 font-bold py-4 px-6 rounded-full text-lg transition-all active:scale-[0.98] shadow-md"
+            className="w-full bg-[#B87830] hover:bg-[#C25A28] text-white font-bold py-4 px-6 rounded-full text-lg transition-all active:scale-[0.98] shadow-md"
           >
-            {copied ? "복사 완료! ✓" : "텍스트 복사하기 📋"}
+            {copied ? "복사 완료! ✓" : "텍스트 복사하기"}
           </button>
           <button
             onClick={handleKakaoShare}
@@ -579,7 +567,7 @@ function ResultContent() {
             className="w-full bg-[#FEE500] hover:bg-[#F5DC00] disabled:bg-gray-200 disabled:text-gray-400 text-gray-900 font-bold py-4 px-6 rounded-full text-lg transition-all active:scale-[0.98] shadow-md disabled:cursor-not-allowed"
           >
             {process.env.NEXT_PUBLIC_KAKAO_KEY
-              ? "카카오톡으로 공유 💬"
+              ? "카카오톡으로 공유"
               : "카카오톡 공유 준비중"}
           </button>
           <button
@@ -587,9 +575,9 @@ function ResultContent() {
               sessionStorage.removeItem("instinct-test-answers");
               router.push("/");
             }}
-            className="w-full bg-white hover:bg-gray-50 text-gray-700 font-medium py-4 px-6 rounded-full text-lg transition-all border-2 border-gray-200 active:scale-[0.98]"
+            className="w-full bg-white hover:bg-[#F5F0E8] text-[#2C2C35] font-medium py-4 px-6 rounded-full text-lg transition-all border-2 border-[#E8E4DC] active:scale-[0.98]"
           >
-            다시 테스트하기 🔄
+            다시 테스트하기
           </button>
         </div>
       </div>
@@ -603,8 +591,7 @@ export default function ResultPage() {
       fallback={
         <div className="min-h-screen flex items-center justify-center">
           <div className="text-center">
-            <div className="text-6xl mb-4 animate-pulse">🧬</div>
-            <p className="text-gray-500">로딩 중...</p>
+            <p className="text-[#8A8690]">로딩 중...</p>
           </div>
         </div>
       }
