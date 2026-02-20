@@ -8,6 +8,7 @@ export interface SaveResultPayload {
   result_type: string;
   gender: string;
   answers?: Record<string, number>;
+  ref_id?: string;
 }
 
 export interface SavedResult {

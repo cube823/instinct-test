@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, Suspense } from "react";
+import { useEffect, useState, useRef, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { toPng } from "html-to-image";
@@ -11,9 +11,11 @@ import type { Gender, Intensity } from "@/data/results";
 import {
   saveResult as apiSaveResult,
   getResult as apiGetResult,
+  getStats,
 } from "@/lib/api";
+import type { Stats } from "@/lib/api";
 
-// Kakao SDK 타입 선언
+// Kakao SDK type declaration
 declare global {
   interface Window {
     Kakao?: {
@@ -52,6 +54,15 @@ type ResultTypeKey =
   | "half"
   | "balanced";
 
+const TYPE_NAME_MAP: Record<ResultTypeKey, string> = {
+  crazySurvival: "미친생존",
+  realSurvival: "찐생존",
+  crazyReproduction: "미친번식",
+  realReproduction: "찐번식",
+  half: "반반형",
+  balanced: "균형형",
+};
+
 function getResultTypeKey(
   intensity: Intensity,
   dominantAxis: string
@@ -81,6 +92,158 @@ const compatibilityData: Record<
   balanced: { good: ["균형형", "모든 유형"] },
 };
 
+// Stats distribution bar chart component
+function StatsSection({
+  stats,
+  myTypeKey,
+}: {
+  stats: Stats;
+  myTypeKey: ResultTypeKey;
+}) {
+  const total = stats.total || 1;
+  const typeKeys: ResultTypeKey[] = [
+    "crazySurvival",
+    "realSurvival",
+    "crazyReproduction",
+    "realReproduction",
+    "half",
+    "balanced",
+  ];
+
+  const myCount = stats.distribution[myTypeKey] || 0;
+  const myPercent = Math.round((myCount / total) * 100);
+
+  const getBarColor = (key: ResultTypeKey) => {
+    if (key === "crazySurvival" || key === "realSurvival")
+      return "bg-[#3D4D7A]";
+    if (key === "crazyReproduction" || key === "realReproduction")
+      return "bg-[#FF2A1B]";
+    return "bg-[#B87830]";
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 30 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 2.0 }}
+    >
+      <h2 className="text-xl font-bold mb-5">통계</h2>
+
+      {/* Rarity badge */}
+      <div className="bg-gradient-to-r from-[#B87830]/10 to-[#C8A060]/10 border border-[#B87830]/20 rounded-xl p-4 mb-5 text-center">
+        <span className="text-[#B87830] font-bold text-lg">
+          전체 참여자 중 {myPercent}%만 이 유형!
+        </span>
+      </div>
+
+      {/* Distribution bar chart */}
+      <div className="space-y-3">
+        {typeKeys.map((key) => {
+          const count = stats.distribution[key] || 0;
+          const percent = total > 0 ? Math.round((count / total) * 100) : 0;
+          const isMyType = key === myTypeKey;
+
+          return (
+            <div key={key} className={isMyType ? "opacity-100" : "opacity-60"}>
+              <div className="flex items-center justify-between mb-1">
+                <span
+                  className={`text-sm ${isMyType ? "font-bold text-[#2C2C35]" : "text-[#8A8690]"}`}
+                >
+                  {TYPE_NAME_MAP[key]}
+                  {isMyType && " ← 나"}
+                </span>
+                <span
+                  className={`text-sm ${isMyType ? "font-bold text-[#2C2C35]" : "text-[#8A8690]"}`}
+                >
+                  {percent}%
+                </span>
+              </div>
+              <div className="h-3 bg-[#E8E4DC] rounded-full overflow-hidden">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${Math.max(percent, 2)}%` }}
+                  transition={{ duration: 1, delay: 2.2 + typeKeys.indexOf(key) * 0.1 }}
+                  className={`h-full rounded-full ${getBarColor(key)} ${isMyType ? "ring-2 ring-offset-1 ring-[#B87830]/50" : ""}`}
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </motion.div>
+  );
+}
+
+// Challenge comparison component
+function ChallengeComparison({
+  myResult,
+  myGender,
+  myTypeKey,
+  opponentId,
+}: {
+  myResult: TestResult;
+  myGender: Gender;
+  myTypeKey: ResultTypeKey;
+  opponentId: string;
+}) {
+  const [opponent, setOpponent] = useState<{
+    result_type: string;
+    gender: string;
+    survival_score: number;
+    reproduction_score: number;
+  } | null>(null);
+
+  useEffect(() => {
+    apiGetResult(opponentId).then((data) => {
+      if (data) setOpponent(data);
+    });
+  }, [opponentId]);
+
+  if (!opponent) return null;
+
+  const opponentTypeKey = opponent.result_type as ResultTypeKey;
+  const opponentType = resultTypes[opponentTypeKey];
+  if (!opponentType) return null;
+
+  const opponentName = opponentType.label(opponent.gender as Gender);
+  const myName = resultTypes[myTypeKey].label(myGender);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 30 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.3 }}
+      className="bg-gradient-to-r from-[#3D4D7A]/5 to-[#FF2A1B]/5 border border-[#E8E4DC] rounded-2xl p-6 mb-6"
+    >
+      <h2 className="text-lg font-bold text-center mb-4">도전 결과 비교</h2>
+      <div className="grid grid-cols-2 gap-4">
+        {/* My result */}
+        <div className="text-center">
+          <div className="text-sm text-[#8A8690] mb-1">나</div>
+          <div className="font-bold text-[#2C2C35] text-lg">{myName}</div>
+          <div className="text-sm text-[#3D4D7A] mt-1">
+            생존 {myResult.scores.survival}
+          </div>
+          <div className="text-sm text-[#FF2A1B]">
+            번식 {myResult.scores.reproduction}
+          </div>
+        </div>
+        {/* VS */}
+        <div className="text-center">
+          <div className="text-sm text-[#8A8690] mb-1">상대</div>
+          <div className="font-bold text-[#2C2C35] text-lg">{opponentName}</div>
+          <div className="text-sm text-[#3D4D7A] mt-1">
+            생존 {opponent.survival_score}
+          </div>
+          <div className="text-sm text-[#FF2A1B]">
+            번식 {opponent.reproduction_score}
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
 function ResultContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -91,13 +254,25 @@ function ResultContent() {
   const [showGenderModal, setShowGenderModal] = useState(false);
   const [copied, setCopied] = useState(false);
   const [resultId, setResultId] = useState<string | null>(null);
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [challengeOpponent, setChallengeOpponent] = useState<string | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    // Fetch stats
+    getStats().then(setStats);
+
+    // Check for challenge opponent
+    const storedOpponent = sessionStorage.getItem("challenge-opponent");
+    if (storedOpponent) {
+      setChallengeOpponent(storedOpponent);
+    }
+  }, []);
 
   useEffect(() => {
     const sharedId = searchParams.get("id");
 
     if (sharedId) {
-      // 공유 링크로 접속한 경우 → API에서 결과 조회
       apiGetResult(sharedId).then((saved) => {
         if (saved) {
           setResult({
@@ -115,14 +290,12 @@ function ResultContent() {
           setResultId(saved.id);
           setLoading(false);
         } else {
-          // API 실패 → 홈으로
           router.push("/");
         }
       });
       return;
     }
 
-    // 직접 테스트 완료 → sessionStorage에서 결과 계산
     const stored = sessionStorage.getItem("instinct-test-answers");
     if (!stored) {
       router.push("/");
@@ -134,7 +307,6 @@ function ResultContent() {
       const testResult = getResult(answers);
       setResult(testResult);
 
-      // 3단계 분석 연출 (각 1초)
       const steps = [
         { step: 0, delay: 0 },
         { step: 1, delay: 1000 },
@@ -145,7 +317,6 @@ function ResultContent() {
         setTimeout(() => setAnalyzingStep(step), delay);
       });
 
-      // 3초 후 성별 선택 모달 표시
       setTimeout(() => {
         setLoading(false);
         setShowGenderModal(true);
@@ -159,7 +330,6 @@ function ResultContent() {
     setGender(selectedGender);
     setShowGenderModal(false);
 
-    // API에 결과 저장 (비동기, 실패해도 결과 표시에 영향 없음)
     if (result) {
       const resultTypeKey = getResultTypeKey(
         result.intensity,
@@ -171,7 +341,16 @@ function ResultContent() {
         const stored = sessionStorage.getItem("instinct-test-answers");
         if (stored) answers = JSON.parse(stored);
       } catch {
-        // answers 없이도 저장 가능
+        // answers are optional
+      }
+
+      // Get ref_id from sessionStorage
+      let refId: string | undefined;
+      try {
+        const storedRef = sessionStorage.getItem("instinct-ref");
+        if (storedRef) refId = storedRef;
+      } catch {
+        // ref_id is optional
       }
 
       const saved = await apiSaveResult({
@@ -182,6 +361,7 @@ function ResultContent() {
         result_type: resultTypeKey,
         gender: selectedGender,
         answers,
+        ref_id: refId,
       });
 
       if (saved) {
@@ -191,14 +371,14 @@ function ResultContent() {
     }
   };
 
-  const getShareUrl = () => {
+  const getShareUrl = useCallback(() => {
     if (resultId) {
       return `${window.location.origin}/result?id=${resultId}`;
     }
     return window.location.origin;
-  };
+  }, [resultId]);
 
-  const handleShare = () => {
+  const handleShare = useCallback(async () => {
     if (!result || !gender) return;
 
     const resultTypeKey = getResultTypeKey(
@@ -208,13 +388,28 @@ function ResultContent() {
     const resultType = resultTypes[resultTypeKey];
     const typeName = resultType.label(gender);
     const shareUrl = getShareUrl();
-    const shareText = `나의 본능 유형은 ${typeName}! 🧬\n생존 ${result.scores.survival}점 / 번식 ${result.scores.reproduction}점\n${shareUrl}`;
 
+    // Try Web Share API first
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `나의 본능 유형: ${typeName}`,
+          text: `생존 ${result.scores.survival}점 / 번식 ${result.scores.reproduction}점`,
+          url: shareUrl,
+        });
+        return;
+      } catch {
+        // User cancelled or error - fall back to clipboard
+      }
+    }
+
+    // Fallback: clipboard
+    const shareText = `나의 본능 유형은 ${typeName}! 🧬\n생존 ${result.scores.survival}점 / 번식 ${result.scores.reproduction}점\n${shareUrl}`;
     navigator.clipboard.writeText(shareText).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
-  };
+  }, [result, gender, getShareUrl]);
 
   const handleDownloadImage = async () => {
     if (!cardRef.current) return;
@@ -244,6 +439,7 @@ function ResultContent() {
     const resultType = resultTypes[resultTypeKey];
     const typeName = resultType.label(gender);
     const shareUrl = getShareUrl();
+    const ogImageUrl = `${window.location.origin}/og/${resultTypeKey}-${gender}.png`;
 
     if (typeof window !== "undefined" && window.Kakao) {
       if (!window.Kakao.isInitialized()) {
@@ -259,7 +455,7 @@ function ResultContent() {
           content: {
             title: `나의 본능 유형: ${typeName}`,
             description: `생존 ${result.scores.survival}점 / 번식 ${result.scores.reproduction}점`,
-            imageUrl: `${window.location.origin}/og-image.png`,
+            imageUrl: ogImageUrl,
             link: {
               mobileWebUrl: shareUrl,
               webUrl: shareUrl,
@@ -279,20 +475,34 @@ function ResultContent() {
     }
   };
 
+  const handleChallengeShare = useCallback(async () => {
+    if (!resultId) return;
+    const challengeUrl = `${window.location.origin}/?challenge=${resultId}`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: "본능 테스트 도전장!",
+          text: "나의 본능과 비교해볼래?",
+          url: challengeUrl,
+        });
+        return;
+      } catch {
+        // fallback
+      }
+    }
+
+    navigator.clipboard.writeText(challengeUrl).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }, [resultId]);
+
   if (loading) {
     const steps = [
-      {
-        text: "생존 본능을 분석하고 있어요...",
-        color: "bg-[#3D4D7A]",
-      },
-      {
-        text: "번식 본능을 분석하고 있어요...",
-        color: "bg-[#FF2A1B]",
-      },
-      {
-        text: "결과를 생성하고 있어요...",
-        color: "bg-[#B87830]",
-      },
+      { text: "생존 본능을 분석하고 있어요...", color: "bg-[#3D4D7A]" },
+      { text: "번식 본능을 분석하고 있어요...", color: "bg-[#FF2A1B]" },
+      { text: "결과를 생성하고 있어요...", color: "bg-[#B87830]" },
     ];
 
     const currentStep = steps[analyzingStep];
@@ -391,12 +601,22 @@ function ResultContent() {
   return (
     <div className="min-h-screen py-8 px-4">
       <div className="max-w-lg mx-auto">
-        {/* 결과 카드 (이미지 생성용) */}
+        {/* Challenge comparison (if opponent exists) */}
+        {challengeOpponent && gender && (
+          <ChallengeComparison
+            myResult={result}
+            myGender={gender}
+            myTypeKey={resultTypeKey}
+            opponentId={challengeOpponent}
+          />
+        )}
+
+        {/* Result card (for image generation) */}
         <div
           ref={cardRef}
           className="bg-white rounded-2xl shadow-sm p-8 mb-6"
         >
-          {/* 유형 헤더 */}
+          {/* Type header */}
           <motion.div
             initial={{ opacity: 0, scale: 0 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -411,7 +631,7 @@ function ResultContent() {
             <p className="text-[#8A8690] text-lg">{resultType.subtitle}</p>
           </motion.div>
 
-          {/* 점수 바 */}
+          {/* Score bar */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -448,7 +668,7 @@ function ResultContent() {
 
           <div className="border-t border-[#E8E4DC] pt-8 mb-8" />
 
-          {/* 특징 */}
+          {/* Traits */}
           <div className="mb-10">
             <h2 className="text-xl font-bold mb-5">이런 사람이에요</h2>
             <div className="space-y-3">
@@ -468,7 +688,7 @@ function ResultContent() {
 
           <div className="border-t border-[#E8E4DC] pt-8 mb-8" />
 
-          {/* 연애 스타일 */}
+          {/* Love style */}
           <div className="mb-10">
             <h2 className="text-xl font-bold mb-5">연애할 때는...</h2>
             <div className="space-y-4">
@@ -493,7 +713,7 @@ function ResultContent() {
 
           <div className="border-t border-[#E8E4DC] pt-8 mb-8" />
 
-          {/* 명대사 */}
+          {/* Quote */}
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -513,12 +733,12 @@ function ResultContent() {
 
           <div className="border-t border-[#E8E4DC] pt-8 mb-8" />
 
-          {/* 궁합 */}
+          {/* Compatibility */}
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 1.8 }}
-            className="mb-6"
+            className="mb-8"
           >
             <h2 className="text-xl font-bold mb-5">나와 잘 맞는 유형</h2>
             <div className="space-y-3">
@@ -541,38 +761,61 @@ function ResultContent() {
             </div>
           </motion.div>
 
-          {/* 워터마크 (이미지 생성용) */}
+          <div className="border-t border-[#E8E4DC] pt-8 mb-8" />
+
+          {/* Stats section */}
+          {stats && (
+            <StatsSection stats={stats} myTypeKey={resultTypeKey} />
+          )}
+
+          {/* Watermark (for image export) */}
           <div className="text-center text-[#B5A48A] text-sm mt-6">
             본능테스트
           </div>
         </div>
 
-        {/* 공유 & 다시하기 */}
+        {/* Share & actions */}
         <div className="space-y-3 mb-8">
-          <button
-            onClick={handleDownloadImage}
-            className="w-full bg-[#3D4D7A] hover:bg-[#3D4D7A]/90 text-white font-bold py-4 px-6 rounded-full text-lg transition-all active:scale-[0.98] shadow-md"
-          >
-            이미지로 저장하기
-          </button>
+          {/* Primary: Share */}
           <button
             onClick={handleShare}
             className="w-full bg-[#B87830] hover:bg-[#C25A28] text-white font-bold py-4 px-6 rounded-full text-lg transition-all active:scale-[0.98] shadow-md"
           >
-            {copied ? "복사 완료! ✓" : "텍스트 복사하기"}
+            {copied ? "복사 완료!" : "공유하기"}
           </button>
-          <button
-            onClick={handleKakaoShare}
-            disabled={!process.env.NEXT_PUBLIC_KAKAO_KEY}
-            className="w-full bg-[#FEE500] hover:bg-[#F5DC00] disabled:bg-gray-200 disabled:text-gray-400 text-gray-900 font-bold py-4 px-6 rounded-full text-lg transition-all active:scale-[0.98] shadow-md disabled:cursor-not-allowed"
-          >
-            {process.env.NEXT_PUBLIC_KAKAO_KEY
-              ? "카카오톡으로 공유"
-              : "카카오톡 공유 준비중"}
-          </button>
+
+          {/* Secondary row: Image save + Kakao */}
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={handleDownloadImage}
+              className="bg-[#3D4D7A] hover:bg-[#3D4D7A]/90 text-white font-bold py-4 px-4 rounded-full text-base transition-all active:scale-[0.98] shadow-md"
+            >
+              이미지 저장
+            </button>
+            <button
+              onClick={handleKakaoShare}
+              disabled={!process.env.NEXT_PUBLIC_KAKAO_KEY}
+              className="bg-[#FEE500] hover:bg-[#F5DC00] disabled:bg-gray-200 disabled:text-gray-400 text-gray-900 font-bold py-4 px-4 rounded-full text-base transition-all active:scale-[0.98] shadow-md disabled:cursor-not-allowed"
+            >
+              카카오톡
+            </button>
+          </div>
+
+          {/* Challenge button */}
+          {resultId && (
+            <button
+              onClick={handleChallengeShare}
+              className="w-full bg-gradient-to-r from-[#3D4D7A] to-[#FF2A1B] hover:opacity-90 text-white font-bold py-4 px-6 rounded-full text-lg transition-all active:scale-[0.98] shadow-md"
+            >
+              도전장 보내기
+            </button>
+          )}
+
+          {/* Retry */}
           <button
             onClick={() => {
               sessionStorage.removeItem("instinct-test-answers");
+              sessionStorage.removeItem("challenge-opponent");
               router.push("/");
             }}
             className="w-full bg-white hover:bg-[#F5F0E8] text-[#2C2C35] font-medium py-4 px-6 rounded-full text-lg transition-all border-2 border-[#E8E4DC] active:scale-[0.98]"

@@ -32,6 +32,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       result_type: string;
       gender: string;
       answers?: Record<string, number>;
+      ref_id?: string;
     }>();
 
     // Validation
@@ -72,8 +73,8 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     const userAgent = context.request.headers.get("User-Agent") || "";
 
     await context.env.DB.prepare(
-      `INSERT INTO results (id, survival_score, reproduction_score, intensity, dominant_axis, result_type, gender, answers, user_agent)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO results (id, survival_score, reproduction_score, intensity, dominant_axis, result_type, gender, answers, user_agent, ref_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
       .bind(
         id,
@@ -84,7 +85,8 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
         body.result_type,
         body.gender,
         body.answers ? JSON.stringify(body.answers) : null,
-        userAgent
+        userAgent,
+        body.ref_id || null
       )
       .run();
 
