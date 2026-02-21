@@ -256,7 +256,44 @@ function ResultContent() {
   const [resultId, setResultId] = useState<string | null>(null);
   const [stats, setStats] = useState<Stats | null>(null);
   const [challengeOpponent, setChallengeOpponent] = useState<string | null>(null);
+  const [kakaoReady, setKakaoReady] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
+
+  // Load and initialize Kakao SDK
+  useEffect(() => {
+    const KAKAO_KEY = process.env.NEXT_PUBLIC_KAKAO_KEY;
+    if (!KAKAO_KEY) return;
+
+    const initKakao = () => {
+      if (window.Kakao && !window.Kakao.isInitialized()) {
+        window.Kakao.init(KAKAO_KEY);
+      }
+      if (window.Kakao?.isInitialized()) {
+        setKakaoReady(true);
+      }
+    };
+
+    // If already loaded
+    if (window.Kakao) {
+      initKakao();
+      return;
+    }
+
+    // Dynamically load SDK
+    const script = document.createElement("script");
+    script.src = "https://t1.kakaocdn.net/kakao_js_sdk/2.7.4/kakao.min.js";
+    script.async = true;
+    script.onload = initKakao;
+    script.onerror = () => {
+      // Retry with different version
+      const fallback = document.createElement("script");
+      fallback.src = "https://developers.kakao.com/sdk/js/kakao.min.js";
+      fallback.async = true;
+      fallback.onload = initKakao;
+      document.head.appendChild(fallback);
+    };
+    document.head.appendChild(script);
+  }, []);
 
   useEffect(() => {
     // Fetch stats
@@ -430,7 +467,7 @@ function ResultContent() {
   };
 
   const handleKakaoShare = () => {
-    if (!result || !gender) return;
+    if (!result || !gender || !window.Kakao?.isInitialized()) return;
 
     const resultTypeKey = getResultTypeKey(
       result.intensity,
@@ -441,38 +478,27 @@ function ResultContent() {
     const shareUrl = getShareUrl();
     const ogImageUrl = `${window.location.origin}/og/${resultTypeKey}-${gender}.png`;
 
-    if (typeof window !== "undefined" && window.Kakao) {
-      if (!window.Kakao.isInitialized()) {
-        const kakaoKey = process.env.NEXT_PUBLIC_KAKAO_KEY;
-        if (kakaoKey) {
-          window.Kakao.init(kakaoKey);
-        }
-      }
-
-      if (window.Kakao.isInitialized()) {
-        window.Kakao.Share.sendDefault({
-          objectType: "feed",
-          content: {
-            title: `나의 본능 유형: ${typeName}`,
-            description: `생존 ${result.scores.survival}점 / 번식 ${result.scores.reproduction}점`,
-            imageUrl: ogImageUrl,
-            link: {
-              mobileWebUrl: shareUrl,
-              webUrl: shareUrl,
-            },
+    window.Kakao.Share.sendDefault({
+      objectType: "feed",
+      content: {
+        title: `나의 본능 유형: ${typeName}`,
+        description: `생존 ${result.scores.survival}점 / 번식 ${result.scores.reproduction}점`,
+        imageUrl: ogImageUrl,
+        link: {
+          mobileWebUrl: shareUrl,
+          webUrl: shareUrl,
+        },
+      },
+      buttons: [
+        {
+          title: "나도 테스트하기",
+          link: {
+            mobileWebUrl: window.location.origin,
+            webUrl: window.location.origin,
           },
-          buttons: [
-            {
-              title: "나도 테스트하기",
-              link: {
-                mobileWebUrl: window.location.origin,
-                webUrl: window.location.origin,
-              },
-            },
-          ],
-        });
-      }
-    }
+        },
+      ],
+    });
   };
 
   const handleChallengeShare = useCallback(async () => {
@@ -794,7 +820,7 @@ function ResultContent() {
             </button>
             <button
               onClick={handleKakaoShare}
-              disabled={!process.env.NEXT_PUBLIC_KAKAO_KEY}
+              disabled={!kakaoReady}
               className="bg-[#FEE500] hover:bg-[#F5DC00] disabled:bg-gray-200 disabled:text-gray-400 text-gray-900 font-bold py-4 px-4 rounded-full text-base transition-all active:scale-[0.98] shadow-md disabled:cursor-not-allowed"
             >
               카카오톡
